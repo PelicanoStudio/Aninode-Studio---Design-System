@@ -232,6 +232,10 @@ export default function App() {
         setSelectedId(null);
         setActiveMenu(null);
       }
+      else if (e.button === 2) { // Right Click Menu
+          e.preventDefault();
+          setActiveMenu('MAIN');
+      }
   };
 
   const handleNodeMouseDown = (e: React.MouseEvent, id: string) => {
@@ -389,21 +393,28 @@ export default function App() {
       
       // CLAMPED INVERSE SCALING
       const strokeWidth = Math.max(1.5, Math.min(6, 2 / viewport.zoom));
-      const hitWidth = Math.max(10, 20 / viewport.zoom);
+      const hitWidth = Math.max(10, 20 / viewport.zoom); // Increased hit area
 
       switch (type) {
           case ConnectionType.STRAIGHT: 
-              // Vector logic: Point to center of node (approx x2 + 128) but stop at edge
-              // Target Center (approx)
-              const tgtCenterX = x2 + 140; // x2 is -12 from Left edge. Center is roughly +128. 
-              const tgtCenterY = y2;
+              // Vector Logic: Point to center of Target Node
+              // Target is at x2 + 12 (port offset) + 128 (half node width) = x2 + 140
+              // Target Y is at y2 + 0 (port y)
+              // But visually x2 is already the edge.
               
-              // Simple vector math not strictly needed if we just draw to x2
-              // But user asked for arrow to point to center but stop at edge.
-              // x2 IS the edge (the port is -24px, but the wire draws to -12).
-              // Let's just draw to x2 for now as it aligns with port. 
-              // To point to center, we'd need to ignore the port Y and calculate center Y.
-              d = `M ${x1} ${y1} L ${x2} ${y2}`; 
+              const dx = (x2 + 140) - x1; 
+              const dy = y2 - y1;
+              const dist = Math.sqrt(dx*dx + dy*dy);
+              
+              // We want the arrow to stop 130px short of the center (approx node radius)
+              // t is the percentage of the line to draw
+              const safeDist = Math.max(0, dist - 130);
+              const t = dist > 0 ? safeDist / dist : 0;
+              
+              const endX = x1 + dx * t;
+              const endY = y1 + dy * t;
+              
+              d = `M ${x1} ${y1} L ${endX} ${endY}`; 
               break;
           case ConnectionType.STEP:
               const midX = x1 + (x2 - x1) / 2;
@@ -549,7 +560,7 @@ export default function App() {
         onMouseDown={handleMouseDown}
         onMouseMove={handleGlobalMove}
         onMouseUp={handleGlobalUp}
-        onContextMenu={(e) => e.preventDefault()}
+        onContextMenu={(e) => { e.preventDefault(); setActiveMenu('MAIN'); }}
       >
         <div 
             className="absolute inset-0 pointer-events-none opacity-20"
